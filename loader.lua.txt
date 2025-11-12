@@ -3,7 +3,7 @@
 -- Авто-загружает modules и config перед main
 -- Запусти: loadstring(game:HttpGet("raw_url_loader.lua"))()
 
-local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo (без https/.git). Если опечатка, переименуй репо на "Tumba-script-v2".
+local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo (без https/.git). После переименования репо — "daniaggbro-cloud/Tumba-script-v2".
 local BASE_REPO_URL = "https://github.com/" .. OWNER_REPO
 local RAW_BASE_URL = "https://raw.githubusercontent.com/" .. OWNER_REPO .. "/main/"
 local TUMBA_FOLDER = "tumba"
@@ -29,7 +29,7 @@ local function downloadFile(path, func)
             return game:HttpGet(url, true)
         end)
         if not suc or res == '404: Not Found' then
-            error("Ошибка загрузки " .. path .. ": " .. (res or "Unknown") .. ". URL: " .. url)
+            error("Ошибка загрузки " .. path .. ": " .. (res or "Unknown") .. ". URL: " .. url .. ". Проверь, есть ли файл в репо!")
         end
         if path:find('.lua') then
             res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.\n' .. res
@@ -61,7 +61,7 @@ local suc, subbed = pcall(function()
     return game:HttpGet(BASE_REPO_URL)
 end)
 if not suc then
-    error("Ошибка доступа к репо: " .. BASE_REPO_URL .. " (private или не существует?)")
+    error("Ошибка доступа к репо: " .. BASE_REPO_URL .. " (private или не существует? Сделай public!)")
 end
 local commit_pos = subbed:find('currentOid')
 local commit = commit_pos and subbed:sub(commit_pos + 13, commit_pos + 52) or nil
@@ -91,6 +91,6 @@ for _, path in ipairs(modules_to_load) do
     downloadFile(path)
 end
 
--- Загружаем и запускаем main.lua.txt
+-- Загружаем и запускаем main.lua.txt (или main.lua после переименования)
 print("🚀 Запуск TUMBA v5...")
 return loadstring(downloadFile('main.lua.txt'), 'main')()
