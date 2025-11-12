@@ -1,0 +1,68 @@
+-- 💎 TUMBA MEGA SYSTEM v5 LOADER (адаптировано из Vape V4)
+-- Загружает/кэширует файлы с GitHub, обновляет по commit, стирает старый кэш
+-- Запусти: loadstring(game:HttpGet("твой_raw_loader.lua"))()
+
+local OWNER_REPO = "https://github.com/daniaggbro-cloud/Tumba-scipt-v2.git"  -- Твоё репо (HttpGet закодирует кириллицу)
+local BASE_REPO_URL = "https://github.com/" .. OWNER_REPO
+local RAW_BASE_URL = "https://raw.githubusercontent.com/" .. OWNER_REPO .. "/main/"
+local TUMBA_FOLDER = "tumba"
+local COMMIT_FILE = TUMBA_FOLDER .. "/commit.txt"
+
+local isfile = isfile or function(file)
+    local suc, res = pcall(function()
+        return readfile(file)
+    end)
+    return suc and res ~= nil and res ~= ''
+end
+
+local delfile = delfile or function(file)
+    writefile(file, '')
+end
+
+local function downloadFile(path, func)
+    local full_path = TUMBA_FOLDER .. "/" .. path
+    if not isfile(full_path) then
+        local suc, res = pcall(function()
+            return game:HttpGet(RAW_BASE_URL .. path, true)
+        end)
+        if not suc or res == '404: Not Found' then
+            error(res)
+        end
+        if path:find('.lua') then
+            res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.\\n' .. res
+        end
+        writefile(full_path, res)
+    end
+    return (func or readfile)(full_path)
+end
+
+local function wipeFolder(path)
+    if not isfolder(path) then return end
+    for _, file in listfiles(path) do
+        if file:find('loader') then continue end
+        if isfile(file) and select(1, readfile(file):find('--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.')) == 1 then
+            delfile(file)
+        end
+    end
+end
+
+for _, folder in {'tumba', 'tumba/config', 'tumba/modules'} do
+    if not isfolder(folder) then
+        makefolder(folder)
+    end
+end
+
+local _, subbed = pcall(function()
+    return game:HttpGet(BASE_REPO_URL)
+end)
+local commit = subbed:find('currentOid')
+commit = commit and subbed:sub(commit + 13, commit + 52) or nil
+commit = commit and #commit == 40 and commit or 'main'
+if commit == 'main' or (isfile(COMMIT_FILE) and readfile(COMMIT_FILE) or '') ~= commit then
+    wipeFolder(TUMBA_FOLDER)
+    wipeFolder(TUMBA_FOLDER .. '/config')
+    wipeFolder(TUMBA_FOLDER .. '/modules')
+end
+writefile(COMMIT_FILE, commit)
+
+return loadstring(downloadFile('main.lua.txt'), 'main')()
