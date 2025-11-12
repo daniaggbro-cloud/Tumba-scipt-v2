@@ -1,8 +1,9 @@
 -- 💎 TUMBA MEGA SYSTEM v5 LOADER (адаптировано из Vape V4)
 -- Загружает/кэширует файлы с GitHub, обновляет по commit, стирает старый кэш
--- Запусти: loadstring(game:HttpGet("твой_raw_loader.lua"))()
+-- Авто-загружает modules и config перед main
+-- Запусти: loadstring(game:HttpGet("raw_url_loader.lua"))()
 
-local OWNER_REPO = "https://github.com/daniaggbro-cloud/Tumba-scipt-v2.git"  -- Твоё репо (HttpGet закодирует кириллицу)
+local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo (без https/.git). Переименуй репо на "Tumba-script-v2" если опечатка.
 local BASE_REPO_URL = "https://github.com/" .. OWNER_REPO
 local RAW_BASE_URL = "https://raw.githubusercontent.com/" .. OWNER_REPO .. "/main/"
 local TUMBA_FOLDER = "tumba"
@@ -20,16 +21,16 @@ local delfile = delfile or function(file)
 end
 
 local function downloadFile(path, func)
-    local full_path = TUMBA_FOLDER .. "/" .. path
+    local full_path = TUMBA_FOLDER .. "/" .. path:gsub("/", "_")  -- Фикс для подпапок (config/settings.lua → tumba/config_settings.lua)
     if not isfile(full_path) then
         local suc, res = pcall(function()
             return game:HttpGet(RAW_BASE_URL .. path, true)
         end)
         if not suc or res == '404: Not Found' then
-            error(res)
+            error("Ошибка загрузки " .. path .. ": " .. (res or "Unknown") .. ". Проверь URL: " .. RAW_BASE_URL .. path)
         end
         if path:find('.lua') then
-            res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.\\n' .. res
+            res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.\n' .. res
         end
         writefile(full_path, res)
     end
@@ -40,29 +41,49 @@ local function wipeFolder(path)
     if not isfolder(path) then return end
     for _, file in listfiles(path) do
         if file:find('loader') then continue end
-        if isfile(file) and select(1, readfile(file):find('--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.')) == 1 then
+        if isfile(file) and readfile(file):find('--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.') then
             delfile(file)
         end
     end
 end
 
+-- Создаём папки
 for _, folder in {'tumba', 'tumba/config', 'tumba/modules'} do
     if not isfolder(folder) then
         makefolder(folder)
     end
 end
 
-local _, subbed = pcall(function()
-    return game:HttpGet(BASE_REPO_URL)
-end)
-local commit = subbed:find('currentOid')
-commit = commit and subbed:sub(commit + 13, commit + 52) or nil
+-- Получаем commit
+local subbed = game:HttpGet(BASE_REPO_URL)
+local commit_pos = subbed:find('currentOid')
+local commit = commit_pos and subbed:sub(commit_pos + 13, commit_pos + 52) or nil
 commit = commit and #commit == 40 and commit or 'main'
+
 if commit == 'main' or (isfile(COMMIT_FILE) and readfile(COMMIT_FILE) or '') ~= commit then
+    print("🔄 Обновление: Новый commit " .. commit)
     wipeFolder(TUMBA_FOLDER)
     wipeFolder(TUMBA_FOLDER .. '/config')
     wipeFolder(TUMBA_FOLDER .. '/modules')
 end
 writefile(COMMIT_FILE, commit)
 
+-- Загружаем modules/config (список из твоего плана)
+local modules_to_load = {
+    "config/settings.lua",
+    "modules/localization.lua",
+    "modules/gui_builder.lua",
+    "modules/esp.lua",
+    "modules/aim_assist.lua",
+    "modules/kit_esp.lua",
+    "modules/player_manager.lua",
+    "modules/utilities.lua"
+}
+
+for _, path in ipairs(modules_to_load) do
+    downloadFile(path)
+end
+
+-- Загружаем и запускаем main.lua.txt
+print("🚀 Запуск TUMBA v5...")
 return loadstring(downloadFile('main.lua.txt'), 'main')()
