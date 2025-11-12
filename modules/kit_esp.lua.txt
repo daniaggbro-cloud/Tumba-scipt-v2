@@ -1,0 +1,133 @@
+local CollectionService = game:GetService("CollectionService")
+local Workspace = game:GetService("Workspace")
+
+local Icons = {
+    ["iron"] = "rbxassetid://6850537969",
+    ["bee"] = "rbxassetid://7343272839",
+    ["natures_essence_1"] = "rbxassetid://11003449842",
+    ["thorns"] = "rbxassetid://9134549615",
+    ["mushrooms"] = "rbxassetid://9134534696",
+    ["wild_flower"] = "rbxassetid://9134545166",
+    ["crit_star"] = "rbxassetid://9866757805",
+    ["vitality_star"] = "rbxassetid://9866757969"
+}
+
+local function espadd(Mega, v, icon)
+    local billboard = Instance.new("BillboardGui")
+    billboard.Parent = Mega.Objects.KitESPObjects.espfold
+    billboard.Name = "iron"
+    billboard.StudsOffsetWorldSpace = Vector3.new(0, 3, 1.5)
+    billboard.Size = UDim2.new(0, 32, 0, 32)
+    billboard.AlwaysOnTop = true
+    billboard.Adornee = v
+
+    local image = Instance.new("ImageLabel")
+    image.BackgroundTransparency = 0.5
+    image.BorderSizePixel = 0
+    image.Image = Icons[icon] or ""
+    image.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    image.Size = UDim2.new(0, 32, 0, 32)
+    image.AnchorPoint = Vector2.new(0.5, 0.5)
+    image.Parent = billboard
+
+    local uicorner = Instance.new("UICorner")
+    uicorner.CornerRadius = UDim.new(0, 4)
+    uicorner.Parent = image
+
+    Mega.Objects.KitESPObjects[v] = billboard
+end
+
+local function resetKit(Mega)
+    for _, v in pairs(Mega.Objects.KitESPObjects.kitConnections) do
+        pcall(function() v:Disconnect() end)
+    end
+    table.clear(Mega.Objects.KitESPObjects.kitConnections)
+    Mega.Objects.KitESPObjects.espfold:ClearAllChildren()
+    table.clear(Mega.Objects.KitESPObjects)
+end
+
+local function addKit(Mega, tag, icon, custom)
+    if not custom then
+        local con1 = CollectionService:GetInstanceAddedSignal(tag):Connect(function(v)
+            if Mega.States.KitESP.Enabled then
+                espadd(Mega, v.PrimaryPart, icon)
+            end
+        end)
+        local con2 = CollectionService:GetInstanceRemovedSignal(tag):Connect(function(v)
+            if Mega.Objects.KitESPObjects[v.PrimaryPart] then
+                Mega.Objects.KitESPObjects[v.PrimaryPart]:Destroy()
+                Mega.Objects.KitESPObjects[v.PrimaryPart] = nil
+            end
+        end)
+        table.insert(Mega.Objects.KitESPObjects.kitConnections, con1)
+        table.insert(Mega.Objects.KitESPObjects.kitConnections, con2)
+        for _, v in pairs(CollectionService:GetTagged(tag)) do
+            if Mega.States.KitESP.Enabled then
+                espadd(Mega, v.PrimaryPart, icon)
+            end
+        end
+    else
+        local function check(v)
+            if v.Name == tag and v.ClassName == "Model" and Mega.States.KitESP.Enabled then
+                espadd(Mega, v.PrimaryPart, icon)
+            end
+        end
+        local conAdded = Workspace.ChildAdded:Connect(check)
+        local conRemoved = Workspace.ChildRemoved:Connect(function(v)
+            pcall(function()
+                if Mega.Objects.KitESPObjects[v.PrimaryPart] then
+                    Mega.Objects.KitESPObjects[v.PrimaryPart]:Destroy()
+                    Mega.Objects.KitESPObjects[v.PrimaryPart] = nil
+                end
+            end)
+        end)
+        table.insert(Mega.Objects.KitESPObjects.kitConnections, conAdded)
+        table.insert(Mega.Objects.KitESPObjects.kitConnections, conRemoved)
+        for _, v in pairs(Workspace:GetChildren()) do
+            check(v)
+        end
+    end
+end
+
+local function recreateKitESP(Mega)
+    resetKit(Mega)
+
+    if not Mega.States.KitESP.Enabled then return end
+
+    local filters = Mega.States.KitESP.Filters
+
+    if filters.Iron then
+        addKit(Mega, "hidden-metal", "iron")
+    end
+    if filters.Bee then
+        addKit(Mega, "bee", "bee")
+    end
+    if filters.NatureEssence then
+        addKit(Mega, "treeOrb", "natures_essence_1")
+    end
+    if filters.Thorns then
+        addKit(Mega, "Thorns", "thorns", true)
+    end
+    if filters.Mushrooms then
+        addKit(Mega, "Mushrooms", "mushrooms", true)
+    end
+    if filters.CritStar then
+        addKit(Mega, "CritStar", "crit_star", true)
+    end
+    if filters.VitalityStar then
+        addKit(Mega, "VitalityStar", "vitality_star", true)
+    end
+end
+
+local function InitKitESP(Mega, TumbaGUI)
+    Mega.Objects.KitESPObjects.espfold = Instance.new("Folder")
+    Mega.Objects.KitESPObjects.espfold.Name = "KitESPFolder"
+    Mega.Objects.KitESPObjects.kitConnections = {}
+    Mega.Objects.KitESPObjects.espfold.Parent = TumbaGUI
+end
+
+return {
+    InitKitESP = InitKitESP,
+    recreateKitESP = recreateKitESP,
+    resetKit = resetKit
+}

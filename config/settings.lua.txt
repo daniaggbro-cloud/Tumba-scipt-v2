@@ -1,0 +1,135 @@
+-- Константы, переменные и настройки
+local Settings = {
+    Menu = {
+        Width = 900,
+        Height = 500,
+        BackgroundColor = Color3.fromRGB(10, 10, 25),
+        TitleBarColor = Color3.fromRGB(0, 100, 200),
+        AccentColor = Color3.fromRGB(0, 180, 255),
+        TextColor = Color3.fromRGB(255, 255, 255),
+        Transparency = 0.05,
+        CornerRadius = 15,
+        AnimationSpeed = 0.3
+    },
+    System = {
+        AntiAFK = true,
+        AutoSaveConfig = true,
+        PerformanceMode = false,
+        DebugMode = false,
+        Logging = true
+    }
+}
+
+local States = {
+    ESP = {
+        Enabled = false,
+        Boxes = true,
+        Names = true,
+        Distance = true,
+        Health = true,
+        Tracers = true,
+        ShowTeam = false,
+        MaxDistance = 1000,
+        TeamColor = Color3.fromRGB(0, 255, 0),
+        EnemyColor = Color3.fromRGB(255, 0, 0),
+        NeutralColor = Color3.fromRGB(255, 255, 0)
+    },
+    KitESP = {
+        Enabled = false,
+        BoxColor = Color3.fromRGB(255, 165, 0),
+        TextColor = Color3.fromRGB(255, 255, 255),
+        MaxDistance = 500,
+        Filters = {
+            Iron = true,
+            Bee = true,
+            NatureEssence = true,
+            Thorns = true,
+            Mushrooms = true,
+            CritStar = true,
+            VitalityStar = true
+        }
+    },
+    AimAssist = {
+        Enabled = false,
+        Active = false,
+        Key = Enum.KeyCode.R,
+        FOV = 120,
+        Smoothness = 0.4,
+        Range = 100,
+        Prediction = true,
+        SilentAim = false,
+        TargetPart = "Head",
+        ShowFOV = true,
+        FOVColor = Color3.fromRGB(0, 180, 255)
+    },
+    Visuals = {
+        NoFog = false,
+        FullBright = false,
+        Chams = false,
+        NightMode = false,
+        RemoveShadows = false
+    },
+    Player = {
+        Fly = false,
+        Speed = false,
+        SpeedValue = 100,
+        Noclip = false,
+        GodMode = false,
+        InfiniteJump = false,
+        NoClip = false,
+        FollowTarget = nil
+    },
+    Combat = {
+        TriggerBot = false,
+        AutoShoot = false,
+        RapidFire = false,
+        NoRecoil = false,
+        NoSpread = false
+    },
+    Misc = {
+        FameSpam = false,
+        AutoFarm = false,
+        CollectItems = false,
+        AntiStun = false,
+        AntiGrab = false
+    },
+    Keybinds = {
+        Menu = "RightShift",
+        AimAssist = "R"
+    }
+}
+
+local Database = {
+    Configs = {},
+    Stats = {
+        Kills = 0,
+        Deaths = 0,
+        Headshots = 0,
+        PlayTime = 0,
+        ConfigSaves = 0
+    }
+}
+
+local Objects = {
+    ESP = {},
+    KitESPObjects = {},
+    Connections = {},
+    GUI = nil,
+    PlayerListItems = {}
+}
+
+local VERSION = "5.0.0"
+local BUILD_DATE = "2024.01.15"
+local DEVELOPER = "I.S.-1"
+local SPECIAL_THANKS = "N.User-1"
+
+return {
+    Settings = Settings,
+    States = States,
+    Database = Database,
+    Objects = Objects,
+    VERSION = VERSION,
+    BUILD_DATE = BUILD_DATE,
+    DEVELOPER = DEVELOPER,
+    SPECIAL_THANKS = SPECIAL_THANKS
+}

@@ -1,0 +1,99 @@
+-- Основной файл
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local TextChatService = game:GetService("TextChatService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local CoreGui = game:GetService("CoreGui")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local StarterGui = game:GetService("StarterGui")
+local CollectionService = game:GetService("CollectionService")
+local Debris = game:GetService("Debris")
+
+local Mega = {}
+Mega.Settings = require(script.Parent.config.settings).Settings
+Mega.States = require(script.Parent.config.settings).States
+Mega.Database = require(script.Parent.config.settings).Database
+Mega.Objects = require(script.Parent.config.settings).Objects
+Mega.VERSION = require(script.Parent.config.settings).VERSION
+Mega.BUILD_DATE = require(script.Parent.config.settings).BUILD_DATE
+Mega.DEVELOPER = require(script.Parent.config.settings).DEVELOPER
+Mega.SPECIAL_THANKS = require(script.Parent.config.settings).SPECIAL_THANKS
+
+local Localization = require(script.Parent.modules.localization)
+Mega.Localization = Localization
+
+local GUI = require(script.Parent.modules.gui_builder)
+local ESP = require(script.Parent.modules.esp)
+local AimAssist = require(script.Parent.modules.aim_assist)
+local KitESP = require(script.Parent.modules.kit_esp)
+local PlayerManager = require(script.Parent.modules.player_manager)
+local Utilities = require(script.Parent.modules.utilities)
+
+local function ToggleMenu(Mega)
+    Mega.Objects.GUI.Enabled = not Mega.Objects.GUI.Enabled
+
+    if Mega.Objects.GUI.Enabled then
+        print(Localization.GetText("print_menu_open", Mega.VERSION))
+        print(Localization.GetText("print_menu_navigate"))
+    else
+        print(Localization.GetText("print_menu_closed"))
+    end
+end
+
+local function OnLanguageSelected(lang)
+    Localization.SetLanguage(lang)
+    print("Language set to: " .. lang)
+
+    KitESP.InitKitESP(Mega, Mega.Objects.GUI)
+    ESP.InitESP(Mega, Localization.GetText)
+    AimAssist.InitAimAssist(Mega, Localization.GetText)
+    PlayerManager.InitPlayerManager(Mega, Localization.GetText, Utilities.showNotification, ToggleMenu)
+    Utilities.AutoSaveConfig(Mega)
+
+    print(Localization.GetText("print_load_success", Mega.VERSION))
+    print(Localization.GetText("print_created_by", Mega.DEVELOPER))
+    print(Localization.GetText("print_for", Mega.SPECIAL_THANKS))
+    print(Localization.GetText("print_build_date", Mega.BUILD_DATE))
+    print(Localization.GetText("print_menu_key", Mega.States.Keybinds.Menu))
+    print(Localization.GetText("print_esp_ready"))
+    print(Localization.GetText("print_kit_esp_ready"))
+    print(Localization.GetText("print_aim_ready", Mega.States.Keybinds.AimAssist))
+    print(Localization.GetText("print_all_ready"))
+
+    local configData = {
+        Settings = Mega.Settings,
+        States = Mega.States,
+        Stats = Mega.Database.Stats
+    }
+    Mega.Database.Configs["default"] = configData
+end
+
+GUI.CreateLanguagePrompt(OnLanguageSelected)
+
+Mega.Objects.GUI = GUI.CreateMainGUI(Mega, Localization.GetText, Utilities.showNotification, ToggleMenu, KitESP.recreateKitESP, KitESP.resetKit, ESP.CreateESP, AimAssist.StartAimLoop, AimAssist.StopAimLoop, PlayerManager.StartFollow, PlayerManager.StopFollow, Utilities.Cleanup, PlayerManager.UpdatePlayerList)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    local keyName = input.KeyCode.Name
+    if not keyName then return end
+
+    if keyName == Mega.States.Keybinds.Menu then
+        ToggleMenu(Mega)
+    end
+end)
+
+local StartTime = tick()
+RunService.Heartbeat:Connect(function()
+    Mega.Database.Stats.PlayTime = math.floor((tick() - StartTime) / 60)
+end)

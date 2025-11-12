@@ -1,0 +1,210 @@
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local function StartFollow(Mega, GetText, showNotification, player)
+    if player and player.Character then
+        Mega.States.Player.FollowTarget = player
+        showNotification(GetText("notify_follow_start", player.Name))
+    end
+end
+
+local function StopFollow(Mega, GetText, showNotification)
+    Mega.States.Player.FollowTarget = nil
+    Workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+    showNotification(GetText("notify_follow_stop"))
+end
+
+local function UpdatePlayerList(Mega, GetText, PlayerListContainer, ListLayout, PlayerItemTemplate)
+    local localHRP = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+
+    for player, item in pairs(Mega.Objects.PlayerListItems) do
+        if not player or not player.Parent then
+            item:Destroy()
+            Mega.Objects.PlayerListItems[player] = nil
+        end
+    end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local item = Mega.Objects.PlayerListItems[player]
+
+            if not item then
+                item = PlayerItemTemplate:Clone()
+                item.Name = player.Name .. "Item"
+                item.Visible = true
+                item.Parent = PlayerListContainer
+                Mega.Objects.PlayerListItems[player] = item
+
+                local p = player
+                item.MouseButton1Click:Connect(function()
+                    StartFollow(Mega, GetText, showNotification, p)
+                end)
+            end
+
+            local char = player.Character
+            local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+            local nameLabel = item:FindFirstChild("Name")
+            local teamLabel = item:FindFirstChild("Team")
+            local hpLabel = item:FindFirstChild("HP")
+            local distLabel = item:FindFirstChild("Distance")
+
+            if Mega.States.Player.FollowTarget == player then
+                item.BackgroundColor3 = Mega.Settings.Menu.AccentColor
+            else
+                item.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
+            end
+
+            if nameLabel then
+                nameLabel.Text = player.Name
+            end
+
+            if teamLabel then
+                teamLabel.Text = (player.Team and player.Team.Name) or GetText("playerlist_team_none")
+                if player.Team and player.Team.TeamColor then
+                    teamLabel.TextColor3 = player.Team.TeamColor.Color
+                else
+                    teamLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                end
+            end
+
+            if hpLabel and humanoid then
+                hpLabel.Text = GetText("playerlist_hp_format", math.floor(humanoid.Health))
+                hpLabel.TextColor3 = humanoid.Health > 0 and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+            elseif hpLabel then
+                hpLabel.Text = GetText("playerlist_hp_dead")
+                hpLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+            end
+
+            if distLabel and localHRP and hrp then
+                local distance = (localHRP.Position - hrp.Position).Magnitude
+                distLabel.Text = GetText("playerlist_dist_format", math.floor(distance))
+            elseif distLabel then
+                distLabel.Text = GetText("playerlist_dist_none")
+            end
+        end
+    end
+
+    PlayerListContainer.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 20)
+end
+
+local function InitPlayerManager(Mega, GetText, showNotification, ToggleMenu)
+    RunService.Heartbeat:Connect(function()
+        if Mega.States.Player.FollowTarget and Mega.States.Player.FollowTarget.Character and Mega.States.Player.FollowTarget.Character:FindFirstChildOfClass("Humanoid") then
+            local targetChar = Mega.States.Player.FollowTarget.Character
+            local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+
+            if targetRoot then
+                Workspace.CurrentCamera.CameraType = Enum.CameraType.Scriptable
+                Workspace.CurrentCamera.CFrame = targetRoot.CFrame * CFrame.new(0, 5, 15)
+            end
+
+            if Mega.States.Player.FollowTarget.Character:FindFirstChildOfClass("Humanoid").Health <= 0 then
+                StopFollow(Mega, GetText, showNotification)
+            end
+        elseif Mega.States.Player.FollowTarget then
+            StopFollow(Mega, GetText, showNotification)
+        end
+
+        if Mega.Objects.GUI.Enabled and Mega.Objects.GUI:FindFirstChild("MainFrame"):FindFirstChild("TabFrames")[GetText("tab_users")].Visible then
+            UpdatePlayerList(Mega, GetText, Mega.Objects.GUI:FindFirstChild("MainFrame"):FindFirstChild("ContentContainer"):FindFirstChild(GetText("tab_users") .. "Content"):FindFirstChild("PlayersList"), 
+                -- Предполагаем, что PlayerItemTemplate и ListLayout доступны, иначе передать их
+            )
+        end
+    end)
+
+    -- Fly
+    if Mega.States.Player.Fly then
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            local humanoidRootPart = character.HumanoidRootPart
+            local BodyGyro = Instance.new("BodyGyro")
+            local BodyVelocity = Instance.new("BodyVelocity")
+
+            BodyGyro.Parent = humanoidRootPart
+            BodyVelocity.Parent = humanoidRootPart
+            BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+            BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+
+            Mega.Objects.Connections.Fly = RunService.Heartbeat:Connect(function()
+                if character and humanoidRootPart then
+                    BodyGyro.CFrame = Workspace.CurrentCamera.CFrame
+                    BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                end
+            end)
+        end
+    else
+        if Mega.Objects.Connections.Fly then
+            Mega.Objects.Connections.Fly:Disconnect()
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                pcall(function() LocalPlayer.Character.HumanoidRootPart:FindFirstChildOfClass("BodyGyro"):Destroy() end)
+                pcall(function() LocalPlayer.Character.HumanoidRootPart:FindFirstChildOfClass("BodyVelocity"):Destroy() end)
+            end
+        end
+    end
+
+    -- Infinite Jump
+    if Mega.States.Player.InfiniteJump then
+        Mega.Objects.Connections.InfiniteJump = UserInputService.JumpRequest:Connect(function()
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+            end
+        end)
+    else
+        if Mega.Objects.Connections.InfiniteJump then
+            Mega.Objects.Connections.InfiniteJump:Disconnect()
+        end
+    end
+
+    -- GodMode
+    if Mega.States.Player.GodMode then
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChild("Humanoid") then
+            character.Humanoid.MaxHealth = math.huge
+            character.Humanoid.Health = math.huge
+        end
+    else
+        local character = LocalPlayer.Character
+        if character and character:FindFirstChild("Humanoid") then
+            character.Humanoid.MaxHealth = 100
+            character.Humanoid.Health = 100
+        end
+    end
+
+    -- NoClip
+    if Mega.States.Player.NoClip then
+        Mega.Objects.Connections.NoClip = RunService.Stepped:Connect(function()
+            if LocalPlayer.Character then
+                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    else
+        if Mega.Objects.Connections.NoClip then
+            Mega.Objects.Connections.NoClip:Disconnect()
+        end
+    end
+
+    -- Anti-AFK
+    if Mega.Settings.System.AntiAFK then
+        local VirtualUser = game:GetService("VirtualUser")
+        LocalPlayer.Idled:Connect(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
+    end
+end
+
+return {
+    InitPlayerManager = InitPlayerManager,
+    StartFollow = StartFollow,
+    StopFollow = StopFollow,
+    UpdatePlayerList = UpdatePlayerList
+}

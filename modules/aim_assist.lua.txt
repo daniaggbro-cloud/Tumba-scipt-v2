@@ -1,0 +1,146 @@
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+
+local AimFOVCircle = nil
+local AimLoopConnection = nil
+local CurrentAimTarget = nil
+
+local function CreateAimFOV(Mega)
+    if AimFOVCircle then
+        AimFOVCircle:Remove()
+    end
+
+    AimFOVCircle = Drawing.new("Circle")
+    AimFOVCircle.Visible = Mega.States.AimAssist.Enabled and Mega.States.AimAssist.ShowFOV
+    AimFOVCircle.Color = Mega.States.AimAssist.FOVColor
+    AimFOVCircle.Thickness = 2
+    AimFOVCircle.NumSides = 100
+    AimFOVCircle.Radius = Mega.States.AimAssist.FOV
+    AimFOVCircle.Filled = false
+end
+
+local function GetClosestPlayer(Mega)
+    local closestPlayer = nil
+    local closestDistance = Mega.States.AimAssist.FOV
+
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+            local character = player.Character
+            local targetPart = character:FindFirstChild(Mega.States.AimAssist.TargetPart) or character:FindFirstChild("Head") or character:FindFirstChild("HumanoidRootPart")
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+
+            if targetPart and humanoidRootPart then
+                local distanceToPlayer = (humanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+
+                if distanceToPlayer <= Mega.States.AimAssist.Range then
+                    local isEnemy = true
+                    if player.Team and game.Players.LocalPlayer.Team then
+                        isEnemy = player.Team ~= game.Players.LocalPlayer.Team
+                    end
+
+                    if isEnemy then
+                        local screenPoint, onScreen = Workspace.CurrentCamera:WorldToViewportPoint(targetPart.Position)
+
+                        if onScreen then
+                            local mousePos = UserInputService:GetMouseLocation()
+                            local distance = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(screenPoint.X, screenPoint.Y)).Magnitude
+
+                            if distance < closestDistance then
+                                closestDistance = distance
+                                closestPlayer = player
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+local function AimAtPlayer(Mega, player)
+    if not player or not player.Character then return end
+
+    local character = player.Character
+    local targetPart = character:FindFirstChild(Mega.States.AimAssist.TargetPart) or character:FindFirstChild("Head") or character:FindFirstChild("HumanoidRootPart")
+    if not targetPart then return end
+
+    local camera = Workspace.CurrentCamera
+
+    local targetPosition = targetPart.Position
+    local direction = (targetPosition - camera.CFrame.Position).Unit
+
+    local currentCFrame = camera.CFrame
+    local targetCFrame = CFrame.lookAt(currentCFrame.Position, targetPosition)
+    local smoothCFrame = currentCFrame:Lerp(targetCFrame, Mega.States.AimAssist.Smoothness)
+
+    camera.CFrame = smoothCFrame
+end
+
+local function StartAimLoop(Mega)
+    if AimLoopConnection then
+        AimLoopConnection:Disconnect()
+    end
+
+    AimLoopConnection = RunService.RenderStepped:Connect(function()
+        if Mega.States.AimAssist.Active and Mega.States.AimAssist.Enabled then
+            CurrentAimTarget = GetClosestPlayer(Mega)
+            if CurrentAimTarget then
+                AimAtPlayer(Mega, CurrentAimTarget)
+            else
+                CurrentAimTarget = nil
+            end
+        end
+    end)
+end
+
+local function StopAimLoop()
+    if AimLoopConnection then
+        AimLoopConnection:Disconnect()
+        AimLoopConnection = nil
+    end
+    CurrentAimTarget = nil
+end
+
+local function UpdateFOVCircle(Mega)
+    RunService.Heartbeat:Connect(function()
+        if AimFOVCircle then
+            AimFOVCircle.Visible = Mega.States.AimAssist.Enabled and Mega.States.AimAssist.ShowFOV
+            AimFOVCircle.Radius = Mega.States.AimAssist.FOV
+            AimFOVCircle.Color = Mega.States.AimAssist.FOVColor
+            AimFOVCircle.Position = UserInputService:GetMouseLocation()
+        end
+    end)
+end
+
+local function InitAimAssist(Mega, GetText)
+    CreateAimFOV(Mega)
+    UpdateFOVCircle(Mega)
+
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+
+        local keyName = input.KeyCode.Name
+        if not keyName then return end
+
+        if keyName == Mega.States.Keybinds.AimAssist then
+            if Mega.States.AimAssist.Enabled then
+                Mega.States.AimAssist.Active = not Mega.States.AimAssist.Active
+
+                if Mega.States.AimAssist.Active then
+                    StartAimLoop(Mega)
+                    print(GetText("print_aim_active"))
+                else
+                    StopAimLoop()
+                    print(GetText("print_aim_inactive"))
+                end
+            end
+        end
+    end)
+end
+
+return {
+    InitAimAssist = InitAimAssist
+}
