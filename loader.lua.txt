@@ -1,9 +1,9 @@
 -- 💎 TUMBA MEGA SYSTEM v5 LOADER (адаптировано из Vape V4)
 -- Загружает/кэширует файлы с GitHub, обновляет по commit, стирает старый кэш
--- Авто-загружает modules и config перед main
+-- Авто-загружает modules и config перед main (с .lua.txt для твоего репо)
 -- Запусти: loadstring(game:HttpGet("raw_url_loader.lua"))()
 
-local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo. Переименуй репо на "Tumba-script-v2" для фикса опечатки "scipt".
+local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo. После переименования — "daniaggbro-cloud/Tumba-script-v2".
 local BASE_REPO_URL = "https://github.com/" .. OWNER_REPO
 local RAW_BASE_URL = "https://raw.githubusercontent.com/" .. OWNER_REPO .. "/main/"
 local TUMBA_FOLDER = "tumba"
@@ -21,15 +21,15 @@ local delfile = delfile or function(file)
 end
 
 local function downloadFile(path, func)
-    local full_path = TUMBA_FOLDER .. "/" .. path:gsub("/", "_")  -- Фикс для подпапок (config/settings.lua.txt → tumba/config_settings.lua.txt локально)
+    local full_path = TUMBA_FOLDER .. "/" .. path:gsub("/", "_"):gsub(".txt", "")  -- Фикс для подпапок и .txt (config/settings.lua.txt → tumba/config_settings.lua локально)
     if not isfile(full_path) then
         local url = RAW_BASE_URL .. path
-        print("📥 Загрузка: " .. url)  -- Для отладки, увидишь в консоли
+        print("📥 Загрузка: " .. url)  -- Для отладки
         local suc, res = pcall(function()
             return game:HttpGet(url, true)
         end)
         if not suc or res == '404: Not Found' then
-            error("Ошибка загрузки " .. path .. ": " .. (res or "Unknown") .. ". URL: " .. url .. ". Проверь имя файла (должен быть .lua.txt) и репо public!")
+            error("Ошибка загрузки " .. path .. ": " .. (res or "Unknown") .. ". URL: " .. url .. ". Проверь имя файла (.lua.txt) и репо public!")
         end
         if path:find('.lua') then
             res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.\n' .. res
