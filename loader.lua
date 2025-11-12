@@ -3,7 +3,7 @@
 -- Авто-загружает modules и config перед main (с .lua.txt для твоего репо)
 -- Запусти: loadstring(game:HttpGet("raw_url_loader.lua"))()
 
-local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo. После переименования — "daniaggbro-cloud/Tumba-script-v2".
+local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo. Рекомендую переименовать репо на "Tumba-script-v2" (исправь "scipt").
 local BASE_REPO_URL = "https://github.com/" .. OWNER_REPO
 local RAW_BASE_URL = "https://raw.githubusercontent.com/" .. OWNER_REPO .. "/main/"
 local TUMBA_FOLDER = "tumba"
@@ -21,7 +21,7 @@ local delfile = delfile or function(file)
 end
 
 local function downloadFile(path, func)
-    local full_path = TUMBA_FOLDER .. "/" .. path:gsub("/", "_"):gsub(".txt", "")  -- Фикс для подпапок и .txt (config/settings.lua.txt → tumba/config_settings.lua локально)
+    local full_path = TUMBA_FOLDER .. "/" .. path:gsub("/", "_")  -- Фикс для подпапок (config/settings.lua.txt → tumba/config_settings.lua.txt локально)
     if not isfile(full_path) then
         local url = RAW_BASE_URL .. path
         print("📥 Загрузка: " .. url)  -- Для отладки
