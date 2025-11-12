@@ -1,99 +1,90 @@
--- Основной файл
-if not game:IsLoaded() then
-    game.Loaded:Wait()
+-- 💎 TUMBA MEGA SYSTEM v5 LOADER (адаптировано из Vape V4)
+-- Загружает/кэширует файлы с GitHub, обновляет по commit, стирает старый кэш
+-- Авто-загружает modules и config перед main
+-- Запусти: loadstring(game:HttpGet("raw_url_loader.lua"))()
+
+local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo (без https/.git)
+local BASE_REPO_URL = "https://github.com/" .. OWNER_REPO
+local RAW_BASE_URL = "https://raw.githubusercontent.com/" .. OWNER_REPO .. "/main/"
+local TUMBA_FOLDER = "tumba"
+local COMMIT_FILE = TUMBA_FOLDER .. "/commit.txt"
+
+local isfile = isfile or function(file)
+    local suc, res = pcall(function()
+        return readfile(file)
+    end)
+    return suc and res ~= nil and res ~= ''
 end
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local TextChatService = game:GetService("TextChatService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local Lighting = game:GetService("Lighting")
-local CoreGui = game:GetService("CoreGui")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local StarterGui = game:GetService("StarterGui")
-local CollectionService = game:GetService("CollectionService")
-local Debris = game:GetService("Debris")
+local delfile = delfile or function(file)
+    writefile(file, '')
+end
 
-local Mega = {}
-Mega.Settings = require(script.Parent.config.settings).Settings
-Mega.States = require(script.Parent.config.settings).States
-Mega.Database = require(script.Parent.config.settings).Database
-Mega.Objects = require(script.Parent.config.settings).Objects
-Mega.VERSION = require(script.Parent.config.settings).VERSION
-Mega.BUILD_DATE = require(script.Parent.config.settings).BUILD_DATE
-Mega.DEVELOPER = require(script.Parent.config.settings).DEVELOPER
-Mega.SPECIAL_THANKS = require(script.Parent.config.settings).SPECIAL_THANKS
+local function downloadFile(path, func)
+    local full_path = TUMBA_FOLDER .. "/" .. path:gsub("/", "_")  -- Фикс для подпапок (config/ -> config_settings.lua)
+    if not isfile(full_path) then
+        local suc, res = pcall(function()
+            return game:HttpGet(RAW_BASE_URL .. path, true)
+        end)
+        if not suc or res == '404: Not Found' then
+            error("Ошибка загрузки " .. path .. ": " .. (res or "Unknown"))
+        end
+        if path:find('.lua') then
+            res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.\n' .. res
+        end
+        writefile(full_path, res)
+    end
+    return (func or readfile)(full_path)
+end
 
-local Localization = require(script.Parent.modules.localization)
-Mega.Localization = Localization
-
-local GUI = require(script.Parent.modules.gui_builder)
-local ESP = require(script.Parent.modules.esp)
-local AimAssist = require(script.Parent.modules.aim_assist)
-local KitESP = require(script.Parent.modules.kit_esp)
-local PlayerManager = require(script.Parent.modules.player_manager)
-local Utilities = require(script.Parent.modules.utilities)
-
-local function ToggleMenu(Mega)
-    Mega.Objects.GUI.Enabled = not Mega.Objects.GUI.Enabled
-
-    if Mega.Objects.GUI.Enabled then
-        print(Localization.GetText("print_menu_open", Mega.VERSION))
-        print(Localization.GetText("print_menu_navigate"))
-    else
-        print(Localization.GetText("print_menu_closed"))
+local function wipeFolder(path)
+    if not isfolder(path) then return end
+    for _, file in listfiles(path) do
+        if file:find('loader') then continue end
+        if isfile(file) and readfile(file):find('--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.') then
+            delfile(file)
+        end
     end
 end
 
-local function OnLanguageSelected(lang)
-    Localization.SetLanguage(lang)
-    print("Language set to: " .. lang)
-
-    KitESP.InitKitESP(Mega, Mega.Objects.GUI)
-    ESP.InitESP(Mega, Localization.GetText)
-    AimAssist.InitAimAssist(Mega, Localization.GetText)
-    PlayerManager.InitPlayerManager(Mega, Localization.GetText, Utilities.showNotification, ToggleMenu)
-    Utilities.AutoSaveConfig(Mega)
-
-    print(Localization.GetText("print_load_success", Mega.VERSION))
-    print(Localization.GetText("print_created_by", Mega.DEVELOPER))
-    print(Localization.GetText("print_for", Mega.SPECIAL_THANKS))
-    print(Localization.GetText("print_build_date", Mega.BUILD_DATE))
-    print(Localization.GetText("print_menu_key", Mega.States.Keybinds.Menu))
-    print(Localization.GetText("print_esp_ready"))
-    print(Localization.GetText("print_kit_esp_ready"))
-    print(Localization.GetText("print_aim_ready", Mega.States.Keybinds.AimAssist))
-    print(Localization.GetText("print_all_ready"))
-
-    local configData = {
-        Settings = Mega.Settings,
-        States = Mega.States,
-        Stats = Mega.Database.Stats
-    }
-    Mega.Database.Configs["default"] = configData
+-- Создаём папки
+for _, folder in {'tumba', 'tumba/config', 'tumba/modules'} do
+    if not isfolder(folder) then
+        makefolder(folder)
+    end
 end
 
-GUI.CreateLanguagePrompt(OnLanguageSelected)
-
-Mega.Objects.GUI = GUI.CreateMainGUI(Mega, Localization.GetText, Utilities.showNotification, ToggleMenu, KitESP.recreateKitESP, KitESP.resetKit, ESP.CreateESP, AimAssist.StartAimLoop, AimAssist.StopAimLoop, PlayerManager.StartFollow, PlayerManager.StopFollow, Utilities.Cleanup, PlayerManager.UpdatePlayerList)
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-
-    local keyName = input.KeyCode.Name
-    if not keyName then return end
-
-    if keyName == Mega.States.Keybinds.Menu then
-        ToggleMenu(Mega)
-    end
+-- Получаем commit
+local _, subbed = pcall(function()
+    return game:HttpGet(BASE_REPO_URL)
 end)
+local commit_pos = subbed:find('currentOid')
+local commit = commit_pos and subbed:sub(commit_pos + 13, commit_pos + 52) or nil
+commit = commit and #commit == 40 and commit or 'main'
 
-local StartTime = tick()
-RunService.Heartbeat:Connect(function()
-    Mega.Database.Stats.PlayTime = math.floor((tick() - StartTime) / 60)
-end)
+if commit == 'main' or (isfile(COMMIT_FILE) and readfile(COMMIT_FILE) or '') ~= commit then
+    print("🔄 Обновление: Новый commit " .. commit)
+    wipeFolder(TUMBA_FOLDER)
+    wipeFolder(TUMBA_FOLDER .. '/config')
+    wipeFolder(TUMBA_FOLDER .. '/modules')
+end
+writefile(COMMIT_FILE, commit)
+
+-- Загружаем modules/config (список из твоего плана)
+local modules_to_load = {
+    "config/settings.lua",
+    "modules/localization.lua",
+    "modules/gui_builder.lua",
+    "modules/esp.lua",
+    "modules/aim_assist.lua",
+    "modules/kit_esp.lua",
+    "modules/player_manager.lua",
+    "modules/utilities.lua"
+}
+
+for _, path in ipairs(modules_to_load) do
+    downloadFile(path)
+end
+
+-- Загружаем и запускаем main.lua.txt
+return loadstring(downloadFile('main.lua.txt'), 'main')()
