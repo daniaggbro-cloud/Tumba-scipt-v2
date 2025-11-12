@@ -3,7 +3,7 @@
 -- Авто-загружает modules и config перед main
 -- Запусти: loadstring(game:HttpGet("raw_url_loader.lua"))()
 
-local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo (без https/.git). После переименования репо — "daniaggbro-cloud/Tumba-script-v2".
+local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo. Переименуй репо на "Tumba-script-v2" для фикса опечатки "scipt".
 local BASE_REPO_URL = "https://github.com/" .. OWNER_REPO
 local RAW_BASE_URL = "https://raw.githubusercontent.com/" .. OWNER_REPO .. "/main/"
 local TUMBA_FOLDER = "tumba"
@@ -21,7 +21,7 @@ local delfile = delfile or function(file)
 end
 
 local function downloadFile(path, func)
-    local full_path = TUMBA_FOLDER .. "/" .. path:gsub("/", "_")  -- Фикс для подпапок (config/settings.lua → tumba/config_settings.lua локально)
+    local full_path = TUMBA_FOLDER .. "/" .. path:gsub("/", "_")  -- Фикс для подпапок (config/settings.lua.txt → tumba/config_settings.lua.txt локально)
     if not isfile(full_path) then
         local url = RAW_BASE_URL .. path
         print("📥 Загрузка: " .. url)  -- Для отладки, увидишь в консоли
@@ -29,7 +29,7 @@ local function downloadFile(path, func)
             return game:HttpGet(url, true)
         end)
         if not suc or res == '404: Not Found' then
-            error("Ошибка загрузки " .. path .. ": " .. (res or "Unknown") .. ". URL: " .. url .. ". Проверь, есть ли файл в репо!")
+            error("Ошибка загрузки " .. path .. ": " .. (res or "Unknown") .. ". URL: " .. url .. ". Проверь имя файла (должен быть .lua.txt) и репо public!")
         end
         if path:find('.lua') then
             res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.\n' .. res
@@ -75,22 +75,22 @@ if commit == 'main' or (isfile(COMMIT_FILE) and readfile(COMMIT_FILE) or '') ~= 
 end
 writefile(COMMIT_FILE, commit)
 
--- Загружаем modules/config (список из твоего плана)
+-- Загружаем modules/config (с .lua.txt для твоего репо)
 local modules_to_load = {
-    "config/settings.lua",
-    "modules/localization.lua",
-    "modules/gui_builder.lua",
-    "modules/esp.lua",
-    "modules/aim_assist.lua",
-    "modules/kit_esp.lua",
-    "modules/player_manager.lua",
-    "modules/utilities.lua"
+    "config/settings.lua.txt",
+    "modules/localization.lua.txt",
+    "modules/gui_builder.lua.txt",
+    "modules/esp.lua.txt",
+    "modules/aim_assist.lua.txt",
+    "modules/kit_esp.lua.txt",
+    "modules/player_manager.lua.txt",
+    "modules/utilities.lua.txt"
 }
 
 for _, path in ipairs(modules_to_load) do
     downloadFile(path)
 end
 
--- Загружаем и запускаем main.lua.txt (или main.lua после переименования)
+-- Загружаем и запускаем main.lua.txt
 print("🚀 Запуск TUMBA v5...")
 return loadstring(downloadFile('main.lua.txt'), 'main')()
