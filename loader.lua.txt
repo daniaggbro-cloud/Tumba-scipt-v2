@@ -3,7 +3,7 @@
 -- Авто-загружает modules и config перед main
 -- Запусти: loadstring(game:HttpGet("raw_url_loader.lua"))()
 
-local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo (без https/.git). Переименуй репо на "Tumba-script-v2" если опечатка.
+local OWNER_REPO = "daniaggbro-cloud/Tumba-scipt-v2"  -- Только username/repo (без https/.git). Если опечатка, переименуй репо на "Tumba-script-v2".
 local BASE_REPO_URL = "https://github.com/" .. OWNER_REPO
 local RAW_BASE_URL = "https://raw.githubusercontent.com/" .. OWNER_REPO .. "/main/"
 local TUMBA_FOLDER = "tumba"
@@ -21,13 +21,15 @@ local delfile = delfile or function(file)
 end
 
 local function downloadFile(path, func)
-    local full_path = TUMBA_FOLDER .. "/" .. path:gsub("/", "_")  -- Фикс для подпапок (config/settings.lua → tumba/config_settings.lua)
+    local full_path = TUMBA_FOLDER .. "/" .. path:gsub("/", "_")  -- Фикс для подпапок (config/settings.lua → tumba/config_settings.lua локально)
     if not isfile(full_path) then
+        local url = RAW_BASE_URL .. path
+        print("📥 Загрузка: " .. url)  -- Для отладки, увидишь в консоли
         local suc, res = pcall(function()
-            return game:HttpGet(RAW_BASE_URL .. path, true)
+            return game:HttpGet(url, true)
         end)
         if not suc or res == '404: Not Found' then
-            error("Ошибка загрузки " .. path .. ": " .. (res or "Unknown") .. ". Проверь URL: " .. RAW_BASE_URL .. path)
+            error("Ошибка загрузки " .. path .. ": " .. (res or "Unknown") .. ". URL: " .. url)
         end
         if path:find('.lua') then
             res = '--This watermark is used to delete the file if its cached, remove it to make the file persist after updates.\n' .. res
@@ -55,7 +57,12 @@ for _, folder in {'tumba', 'tumba/config', 'tumba/modules'} do
 end
 
 -- Получаем commit
-local subbed = game:HttpGet(BASE_REPO_URL)
+local suc, subbed = pcall(function()
+    return game:HttpGet(BASE_REPO_URL)
+end)
+if not suc then
+    error("Ошибка доступа к репо: " .. BASE_REPO_URL .. " (private или не существует?)")
+end
 local commit_pos = subbed:find('currentOid')
 local commit = commit_pos and subbed:sub(commit_pos + 13, commit_pos + 52) or nil
 commit = commit and #commit == 40 and commit or 'main'
